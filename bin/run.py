@@ -12,7 +12,7 @@ from config.config import loader
 from utils.logger import log
 from utils.dispatch import dispatch
 from pkg.consulAPI import ConsulAPI
-from file_sd.file_handler import FileSDHandler
+from file_sd.file_sd_handler import FileSDHandler
 from pkg.consistent_hash import ConsistentHash
 
 
@@ -103,7 +103,6 @@ def sync_distribute(
     f_sd.distribution(target_node_map)
 
 
-@log.catch
 def try_loop(scrape_map):
     while 1:
         if com.que.empty():

@@ -5,6 +5,8 @@
       target_path: /opt/file_sd
   tasks:
       - name: copy target file
+#        async: 1000
+#        poll: 0
         copy:
           src: '{{ item.src }}'
           dest: '{{ item.dest }}'
