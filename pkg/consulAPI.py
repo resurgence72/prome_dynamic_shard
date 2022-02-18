@@ -1,5 +1,5 @@
 import consul
-from common.common import que
+from common.common import com
 from collections import namedtuple
 
 
@@ -8,7 +8,15 @@ class ConsulAPI(object):
     def __init__(self, host, port):
         self._consul = consul.Consul(host, port)
 
-    def register_service(self, s_name, s_id, host, port, tags=None, deregister=None):
+    def register_service(
+            self,
+            s_name,
+            s_id,
+            host,
+            port,
+            tags=None,
+            deregister=None
+    ):
 
         tags = tags or []
 
@@ -99,7 +107,6 @@ class ConsulAPI(object):
             )
 
             if not last_idx or last_idx == idx:
-                print('数据未改变：', last_idx, idx)
                 continue
 
             nodes = []
@@ -109,10 +116,5 @@ class ConsulAPI(object):
                 # id = svc.get('ID')
                 if addr:
                     nodes.append(addr)
-            # print('consul put que : ', nodes)
-            que.put(nodes)
 
-
-if __name__ == '__main__':
-    client = ConsulAPI(host='10.0.0.112', port=8500)
-    client.deregister_services(['prome_node_1', 'prome_node_2'])
+            com.que.put(nodes)

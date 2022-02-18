@@ -1,19 +1,26 @@
 import os
 import re
 from json import dump
-from common.common import lock
+from utils.logger import log
+from common.common import com
 from pkg.ansibleAPI import MyAnsiable
 
 
 class FileSDHandler(object):
 
-    def __init__(self, scrape_name, dest_sd_file_name, playbook_name):
+    def __init__(
+            self,
+            scrape_name,
+            dest_sd_file_name,
+            playbook_name
+    ):
         abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         scrape_name = scrape_name.split('scrape_prome_')[1]
         self.file_sd_path = f'{abs_path}/file_sd/{scrape_name}'
 
         if not os.path.exists(self.file_sd_path):
+            log.info("local sd dir {} create", self.file_sd_path)
             os.mkdir(self.file_sd_path)
 
         self.scrape_name = scrape_name
@@ -29,13 +36,16 @@ class FileSDHandler(object):
         for node, targets in target_map.items():
             file_sd_targets = [{
                 'targets': targets,
+                # TODO target node meta info
                 'labels': {'env_name': 'test'}
             }]
 
-            node = node.split(':')[0]
-            f = open(f'{self.file_sd_path}/{self.dest_sd_file_name}_{node}.json', 'w')
-            dump(file_sd_targets, f)
-            f.close()
+            node_ip = node.split(':')[0]
+            with open(
+                    f'{self.file_sd_path}/{self.dest_sd_file_name}_{node_ip}.json',
+                    'w'
+            ) as f:
+                dump(file_sd_targets, f)
 
     def distribution(self, target_node_map):
         self.create_fd_files(target_node_map)
@@ -50,19 +60,20 @@ class FileSDHandler(object):
 
                     target_ip = target_result.group()
 
-                    lock.acquire(timeout=15)
+                    com.lock.acquire(timeout=15)
                     api = MyAnsiable(
                         inventory=[target_ip],
                         connection='smart',
                         inventory_type='dynamic',
+                        # demo use pwd and root
                         host_variables={'ansible_ssh_pass': 1, 'ansible_ssh_user': 'root'},
                     )
 
                     api.playbook(
-                        playbooks=[self.playbook_file],
+                        playbooks=[self.playbook_file, ],
                         extra_vars={
                             'src_sd_file_name': f'{self.file_sd_path}/{name}',
                             'dest_sd_file_name': f'{self.dest_sd_file_name}.json',
                         }
                     )
-                    lock.release()
+                    com.lock.release()

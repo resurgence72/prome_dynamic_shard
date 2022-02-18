@@ -16,6 +16,7 @@ shard_service:
 #      playbook_name: copy_file_and_reload_prome.yaml
 
   # must be implementation func in dispatch
+  # like       def scrape_prome_ecs(self):pass
   scrape_prome_ecs:
     desc: ecs targets monitor
     prome_nodes:

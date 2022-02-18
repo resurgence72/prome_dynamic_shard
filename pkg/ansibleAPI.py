@@ -11,9 +11,6 @@ import ansible.constants as C
 
 
 class ResultCallback(CallbackBase):
-    """
-    重写callbackBase类的部分方法
-    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,8 +40,11 @@ class MyAnsiable(object):
             become=None,  # 是否提权
             become_method=None,  # 提权方式 默认 sudo 可以是 su
             become_user=None,  # 提权后，要成为的用户，并非登录用户
-            check=False, diff=False,
-            listhosts=None, listtasks=None, listtags=None,
+            check=False,
+            diff=False,
+            listhosts=None,
+            listtasks=None,
+            listtags=None,
             verbosity=3,
             syntax=None,
             start_at_task=None,
@@ -112,7 +112,13 @@ class MyAnsiable(object):
         # 变量管理器
         self.variable_manager = VariableManager(self.loader, self.inv_obj)
 
-    def run(self, hosts='localhost', gether_facts="no", module="ping", args=''):
+    def run(
+            self,
+            hosts='localhost',
+            gether_facts="no",
+            module="ping",
+            args=''
+    ):
         play_source = dict(
             name="Ad-hoc",
             hosts=hosts,
@@ -123,7 +129,11 @@ class MyAnsiable(object):
                 {"action": {"module": module, "args": args}},
             ])
 
-        play = Play().load(play_source, variable_manager=self.variable_manager, loader=self.loader)
+        play = Play().load(
+            play_source,
+            variable_manager=self.variable_manager,
+            loader=self.loader
+        )
 
         tqm = None
         try:
@@ -147,11 +157,13 @@ class MyAnsiable(object):
             # 可以在这里设置变量
             self.variable_manager._extra_vars = extra_vars
 
-        playbook = PlaybookExecutor(playbooks=playbooks,  # 注意这里是一个列表
-                                    inventory=self.inv_obj,
-                                    variable_manager=self.variable_manager,
-                                    loader=self.loader,
-                                    passwords=self.passwords)
+        playbook = PlaybookExecutor(
+            playbooks=playbooks,  # 注意这里是一个列表
+            inventory=self.inv_obj,
+            variable_manager=self.variable_manager,
+            loader=self.loader,
+            passwords=self.passwords
+        )
 
         # 使用回调函数
         playbook._tqm._stdout_callback = self.results_callback
@@ -161,15 +173,10 @@ class MyAnsiable(object):
     def get_result(self):
         result_raw = {'success': {}, 'failed': {}, 'unreachable': {}}
 
-        # print(self.results_callback.host_ok)
         for host, result in self.results_callback.host_ok.items():
             result_raw['success'][host] = result._result
         for host, result in self.results_callback.host_failed.items():
             result_raw['failed'][host] = result._result
         for host, result in self.results_callback.host_unreachable.items():
             result_raw['unreachable'][host] = result._result
-
-        # 最终打印结果，并且使用 JSON 继续格式化
-        # print(json.dumps(result_raw, indent=4))
         return result_raw
-

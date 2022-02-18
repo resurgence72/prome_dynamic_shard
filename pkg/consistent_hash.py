@@ -13,7 +13,6 @@ class ConsistentHash(object):
         if nodes:
             for node in nodes:
                 self.add_node(node)
-        # self.nodes = nodes
 
     def add_node(self, node):
         for replica in range(self.replicas):
@@ -38,7 +37,6 @@ class ConsistentHash(object):
 
     def get_node_pos(self, key):
         if not self.hash_ring:
-            print('not hash_ring and return None: ', self.hash_ring)
             return None
 
         gen_key = self.gen_key(key)
