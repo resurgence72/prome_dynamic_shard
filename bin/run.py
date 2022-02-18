@@ -10,18 +10,21 @@ from config.config import loader
 from collections import defaultdict
 from threading import Thread
 from common.common import que
+from utils.dispatch import dispatch
 from file_sd.file_handler import FileSDHandler
-from utils.util import get_ecs_list_from_cmdb
 from pkg.consistent_hash import ConsistentHash
 
 
-def get_consistent_hash_map(prome_nodes):
+def get_consistent_hash_map(scrape_name, prome_nodes):
     target_node_map = defaultdict(list)
 
     hash_ring = ConsistentHash(replicas=300, nodes=prome_nodes)
 
-    # get target node
-    for ecs in get_ecs_list_from_cmdb():
+    # fanshe get target node list
+    if not hasattr(dispatch, scrape_name):
+        assert Exception('scrape_name: ', scrape_name, 'not implementation')
+
+    for ecs in getattr(dispatch, scrape_name)():
         target_node = hash_ring.get_node(ecs)
         target_node_map[target_node].append(ecs)
     return target_node_map
@@ -38,7 +41,6 @@ def Run():
     scrape_map = loader.get_shard_service()
 
     for scrape_name, scrape in scrape_map.items():
-        scrape_name = scrape_name.split('scrape_prome_')[1]
         prome_nodes = scrape.get('prome_nodes')
 
         # register prome to consul
@@ -53,41 +55,36 @@ def Run():
                 # deregister=10,
             )
 
-        dest_sd_file_name = scrape.get('dest_sd_file_name')
-        playbook_name = scrape.get('playbook_name')
-        sync_distribute(scrape_name, prome_nodes, dest_sd_file_name, playbook_name)
+        sync_distribute(
+            scrape_name,
+            prome_nodes,
+            scrape.get('dest_sd_file_name'),
+            scrape.get('playbook_name')
+        )
 
-        # 3. 当watch变化
-        wait_interval = loader.get_job_config().get('ticker_interval')
+    # 3. 当watch变化
+    wait_interval = loader.get_job_config().get('ticker_interval')
+    Thread(target=client.watch_service, args=(consul_svc_name, wait_interval)).start()
 
-        thread_list = []
-        prome_watchDog = Thread(target=watch_prome_change, args=(client, consul_svc_name, wait_interval))
-        thread_list.append(prome_watchDog)
-
-        # when que has list
-        try_loop_watchDog = Thread(target=try_loop, args=(scrape_name, dest_sd_file_name, playbook_name))
-        thread_list.append(try_loop_watchDog)
-
-        for thread in thread_list:
-            thread.start()
-
-
-def watch_prome_change(client, service_name, interval):
-    client.watch_service(service_name, interval)
+    # when que has list
+    Thread(target=try_loop, args=(scrape_map,)).start()
 
 
 def sync_distribute(scrape_name, prome_nodes, dest_sd_file_name, playbook_name):
-    target_node_map = get_consistent_hash_map(prome_nodes)
-    # create file_sd json and distribution to remote prome host
+    target_node_map = get_consistent_hash_map(scrape_name, prome_nodes)
 
+    print('begin distribete: ', scrape_name)
     for k, v in target_node_map.items():
         print("sync_distribute start: ", k, len(v))
+    print('end distribete: ', scrape_name)
+    print()
 
     f_sd = FileSDHandler(scrape_name, dest_sd_file_name, playbook_name)
+    # create file_sd json and distribution to remote prome host
     f_sd.distribution(target_node_map)
 
 
-def try_loop(scrape_name, dest_sd_file_name, playbook_name):
+def try_loop(scrape_map):
     while 1:
         print('wait que')
         if que.empty():
@@ -95,8 +92,14 @@ def try_loop(scrape_name, dest_sd_file_name, playbook_name):
             continue
 
         prome_nodes = que.get(timeout=5)
-
         if prome_nodes:
             print('que result: ', prome_nodes)
-            # re distrubute
-            sync_distribute(scrape_name, prome_nodes, dest_sd_file_name, playbook_name)
+
+            # sync distribute
+            for scrape_name, scrape in scrape_map.items():
+                sync_distribute(
+                    scrape_name,
+                    prome_nodes,
+                    scrape.get('dest_sd_file_name'),
+                    scrape.get('playbook_name')
+                )

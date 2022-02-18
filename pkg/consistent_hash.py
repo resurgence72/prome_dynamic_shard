@@ -1,3 +1,5 @@
+import bisect
+
 import mmh3
 
 
@@ -40,13 +42,15 @@ class ConsistentHash(object):
             return None
 
         gen_key = self.gen_key(key)
+
+        """
+        # 内置二分查找
+        idx = bisect.bisect_left(self.sorted_keys, gen_key)
+        node = self.sorted_keys[idx]
+        return self.hash_ring[node]
+        """
         node = self.binary_search_gen_key(gen_key)
         return self.hash_ring[node]
-
-        # for node in self.sorted_keys:
-        #     if key <= node:
-        #         # print(node, self.hash_ring[node])
-        #         return self.hash_ring[node]
 
     def binary_search_gen_key(self, target_key):
         left = 0
@@ -55,7 +59,6 @@ class ConsistentHash(object):
         while left <= right:
             mid = (left + right) // 2
             if self.sorted_keys[mid] == target_key:
-                # 别返回，锁定左侧边界
                 return self.sorted_keys[mid]
             elif self.sorted_keys[mid] < target_key:
                 left = mid + 1
@@ -63,6 +66,11 @@ class ConsistentHash(object):
                 right = mid - 1
 
         # 最后要检查 left 越界的情况
+        if left <= 0:
+            return self.sorted_keys[0]
+        if left >= len(self.sorted_keys):
+            return self.sorted_keys[-1]
+
         return self.sorted_keys[left]
 
     @staticmethod

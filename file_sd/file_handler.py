@@ -9,6 +9,8 @@ class FileSDHandler(object):
 
     def __init__(self, scrape_name, dest_sd_file_name, playbook_name):
         abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        scrape_name = scrape_name.split('scrape_prome_')[1]
         self.file_sd_path = f'{abs_path}/file_sd/{scrape_name}'
 
         if not os.path.exists(self.file_sd_path):
