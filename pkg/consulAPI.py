@@ -118,3 +118,7 @@ class ConsulAPI(object):
                     nodes.append(addr)
 
             com.que.put(nodes)
+
+
+if __name__ == '__main__':
+    ConsulAPI(host="10.0.0.112", port=8500).deregister_services(["prome_nodes_2", "prome_nodes_1","prome_nodes_0"])

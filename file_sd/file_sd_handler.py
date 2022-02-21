@@ -2,8 +2,9 @@ import os
 import re
 from json import dump
 from utils.logger import log
-from common.common import com
 from pkg.ansibleAPI import MyAnsiable
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class FileSDHandler(object):
@@ -47,33 +48,53 @@ class FileSDHandler(object):
             ) as f:
                 dump(file_sd_targets, f)
 
+    def async_distribute(self, target_ip, name):
+        log.info("ansible async distribute {}--{}", target_ip, name)
+        api = MyAnsiable(
+            inventory=[target_ip],
+            connection='smart',
+            inventory_type='dynamic',
+            # demo use pwd and root
+            host_variables={'ansible_ssh_pass': 1, 'ansible_ssh_user': 'root'},
+        )
+
+        api.playbook(
+            playbooks=[self.playbook_file, ],
+            extra_vars={
+                'src_sd_file_name': f'{self.file_sd_path}/{name}',
+                'dest_sd_file_name': f'{self.dest_sd_file_name}.json',
+            }
+        )
+        return api.get_result()
+
     def distribution(self, target_node_map):
         self.create_fd_files(target_node_map)
 
         re_matcher = re.compile(r'(([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])')
-        for _, _, files in os.walk(self.file_sd_path):
-            for name in files:
-                if name.endswith('json'):
-                    target_result = re.search(re_matcher, name)
-                    if not target_result:
-                        continue
 
-                    target_ip = target_result.group()
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            tasks = []
+            for _, _, files in os.walk(self.file_sd_path):
+                for name in files:
+                    if name.endswith('json'):
+                        target_result = re.search(re_matcher, name)
+                        if not target_result:
+                            continue
 
-                    com.lock.acquire(timeout=15)
-                    api = MyAnsiable(
-                        inventory=[target_ip],
-                        connection='smart',
-                        inventory_type='dynamic',
-                        # demo use pwd and root
-                        host_variables={'ansible_ssh_pass': 1, 'ansible_ssh_user': 'root'},
-                    )
+                        target_ip = target_result.group()
+                        tasks.append(pool.submit(self.async_distribute, target_ip, name))
 
-                    api.playbook(
-                        playbooks=[self.playbook_file, ],
-                        extra_vars={
-                            'src_sd_file_name': f'{self.file_sd_path}/{name}',
-                            'dest_sd_file_name': f'{self.dest_sd_file_name}.json',
-                        }
-                    )
-                    com.lock.release()
+            self.analysis_results(tasks)
+
+    @staticmethod
+    def analysis_results(tasks):
+        task_result = defaultdict(list)
+        for task in as_completed(tasks, timeout=15):
+            data = task.result()
+            for k, v in data.items():
+                task_result[k].extend(v.keys())
+
+        for distribute_status, host_list in task_result.items():
+            log.debug(f'distribute_status: {distribute_status}, host_list: {host_list}')
+
+            # TODO  alert distribute status

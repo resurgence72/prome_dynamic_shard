@@ -114,6 +114,7 @@ def try_loop(scrape_map):
             log.info("queue get result, prome_nodes: {} ", prome_nodes)
 
             # sync distribute
+            begin_distribute = time.time()
             for scrape_name, scrape in scrape_map.items():
                 sync_distribute(
                     scrape_name,
@@ -121,3 +122,4 @@ def try_loop(scrape_map):
                     scrape.get('dest_sd_file_name'),
                     scrape.get('playbook_name')
                 )
+            log.info("loop sync_distribute times: {} s", time.time() - begin_distribute)
