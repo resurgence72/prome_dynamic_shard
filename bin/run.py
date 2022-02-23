@@ -1,8 +1,3 @@
-"""
-1. shard启动后将prome节点注入consul，并且watch变化
-2. shard 从cmdb拉取采集机器列表，一致性哈希分发至两台机器 file_sd 并且reload
-3. 当watch变化后，重新计算一致性哈希并重新分发file_sd且reload
-"""
 import time
 from threading import Thread
 from collections import defaultdict

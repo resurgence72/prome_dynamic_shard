@@ -100,7 +100,6 @@ class ConsulAPI(object):
         tmp = []
 
         for vv in v:
-            print(vv, end='\n\n')
             service = vv.get('Service')
             ip = service.get('Address')
             port = service.get('Port')

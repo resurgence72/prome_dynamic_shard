@@ -10,14 +10,14 @@ shard_service:
     dest_sd_file_name: file_sd_by_prome_shared.json
     playbook_name: copy_file_and_reload_prome.yaml
 
-  scrape_prome_kafka:
-    desc: kafka targets monitor
-    # kafka distribute prometheus nodes
-    prome_nodes:
-      - 10.0.0.111:9090
-      - 10.0.0.112:9090
-    dest_sd_file_name: file_sd_by_prome_shared_kafka.json
-    playbook_name: copy_file_and_reload_prome.yaml
+#  scrape_prome_kafka:
+#    desc: kafka targets monitor
+#    # kafka distribute prometheus nodes
+#    prome_nodes:
+#      - 10.0.0.111:9090
+#      - 10.0.0.112:9090
+#    dest_sd_file_name: file_sd_by_prome_shared_kafka.json
+#    playbook_name: copy_file_and_reload_prome.yaml
 
 
 # consul watch loop
