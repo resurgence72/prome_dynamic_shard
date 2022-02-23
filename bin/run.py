@@ -35,7 +35,8 @@ def get_consistent_hash_map(scrape_name, prome_nodes):
 def Run():
     # 1. shard启动后将prome节点注入consul，并且watch变化
     consul_conf = loader.get_consul_config()
-    consul_svc_name = consul_conf.get('consul_service_name')
+    wait_interval = loader.get_job_config().get('ticker_interval')
+    # consul_svc_name = consul_conf.get('consul_service_name')
 
     client = ConsulAPI(
         consul_conf.get('host'),
@@ -45,17 +46,15 @@ def Run():
     scrape_map = loader.get_shard_service()
 
     for scrape_name, scrape in scrape_map.items():
-        prome_nodes = scrape.get('prome_nodes')
-
         # register prome to consul
         for idx, node in enumerate(
-                prome_nodes,
+                scrape.get('prome_nodes'),
                 start=1
         ):
             node_host, node_port = node.split(':')[0], int(node.split(':')[1])
             client.register_service(
-                consul_svc_name,
-                consul_svc_name + f'_{idx}',
+                scrape_name,
+                scrape_name + f'_{idx}',
                 node_host,
                 node_port,
                 # TODO consul tags
@@ -63,19 +62,21 @@ def Run():
                 # deregister=10,
             )
 
+            # wait consul health check time
+            time.sleep(0.5)
+
         sync_distribute(
             scrape_name,
-            prome_nodes,
+            # get current health node to dispatch
+            client.get_health_services(scrape_name),
             scrape.get('dest_sd_file_name'),
             scrape.get('playbook_name')
         )
 
-    # 3. 当watch变化
-    wait_interval = loader.get_job_config().get('ticker_interval')
-    Thread(
-        target=client.watch_service,
-        args=(consul_svc_name, wait_interval)
-    ).start()
+        Thread(
+            target=client.watch_service,
+            args=(scrape_name, wait_interval)
+        ).start()
 
     # when que has list
     Thread(target=try_loop, args=(scrape_map,)).start()

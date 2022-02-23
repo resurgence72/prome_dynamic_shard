@@ -1,5 +1,4 @@
 shard_service:
-
   # must be implementation func in dispatch
   # like       def scrape_prome_ecs(self):pass
   scrape_prome_ecs:
@@ -29,4 +28,4 @@ consul_config:
   host: 10.0.0.112
   port: 8500
   # prometheus svc name
-  consul_service_name: prome_nodes
+  #consul_service_name: prome_nodes

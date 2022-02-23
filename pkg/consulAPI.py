@@ -94,6 +94,19 @@ class ConsulAPI(object):
 
         return KVR(idx, v.get('Value'))
 
+    def get_health_services(self, service):
+        # set passing=true filter unhealthy node
+        _, v = self._consul.health.service(service, passing=True)
+        tmp = []
+
+        for vv in v:
+            print(vv, end='\n\n')
+            service = vv.get('Service')
+            ip = service.get('Address')
+            port = service.get('Port')
+            tmp.append(f'{ip}:{port}')
+        return tmp
+
     def watch_service(self, service, interval):
         idx, last_idx = None, None
 
@@ -121,4 +134,6 @@ class ConsulAPI(object):
 
 
 if __name__ == '__main__':
-    ConsulAPI(host="10.0.0.112", port=8500).deregister_services(["prome_nodes_2", "prome_nodes_1","prome_nodes_0"])
+    api = ConsulAPI(host="10.0.0.112", port=8500)
+    # api.deregister_services(["prome_nodes_2", "prome_nodes_1", "prome_nodes_0"])
+    print(api.get_health_services('scrape_prome_kafka'))
